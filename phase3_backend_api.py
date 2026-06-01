@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,19 +7,49 @@ import re
 import os
 import json
 from dotenv import load_dotenv
-from google import genai
+import urllib.request
+import urllib.error
 
 # Load environment variables
 load_dotenv()
 
-# Configure Gemini
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key and api_key != "your_gemini_api_key_here":
-    gemini_client = genai.Client(api_key=api_key)
-    print("Google Gemini AI agent enabled.")
+# Configure Gemini via REST API (lightweight, no grpc/protobuf deps)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = "gemini-2.5-flash"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+
+if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
+    gemini_enabled = True
+    print("Google Gemini AI agent enabled (REST API).")
 else:
-    gemini_client = None
+    gemini_enabled = False
     print("No valid Gemini API key found. Using fallback regex logic for chatbot.")
+
+
+def call_gemini(prompt: str) -> str:
+    """Call Gemini API using lightweight urllib (no google-genai dependency)."""
+    if not gemini_enabled:
+        return None
+
+    payload = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}]
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        print(f"Gemini API Error: {e}")
+        return None
+
 
 app = FastAPI(
     title="Biofuel Optimization API",
@@ -174,7 +203,7 @@ def chatbot_interaction(query: ChatQuery):
     blend = {"Diesel_pct": 100.0, "Coconut_pct": 0.0, "Castor_pct": 0.0, "IPA_pct": 0.0}
     found_custom = False
     
-    if gemini_client:
+    if gemini_enabled:
         prompt = f"""
         Extract fuel blend percentages from the following user query.
         The valid fuel types are: Diesel, Coconut, Castor, IPA.
@@ -185,25 +214,23 @@ def chatbot_interaction(query: ChatQuery):
         Query: "{text}"
         """
         try:
-            response = gemini_client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-            )
-            res_text = response.text.replace('```json', '').replace('```', '').strip()
-            parsed = json.loads(res_text)
-            
-            if not parsed.get('general_query'):
-                blend["Diesel_pct"] = float(parsed.get('Diesel_pct', 100.0))
-                blend["Coconut_pct"] = float(parsed.get('Coconut_pct', 0.0))
-                blend["Castor_pct"] = float(parsed.get('Castor_pct', 0.0))
-                blend["IPA_pct"] = float(parsed.get('IPA_pct', 0.0))
+            res_text = call_gemini(prompt)
+            if res_text:
+                res_text = res_text.replace('```json', '').replace('```', '').strip()
+                parsed = json.loads(res_text)
                 
-                # Auto balance just in case
-                total_custom = blend["Coconut_pct"] + blend["Castor_pct"] + blend["IPA_pct"]
-                if blend["Diesel_pct"] == 100.0 and total_custom > 0 and total_custom <= 100:
-                    blend["Diesel_pct"] = 100.0 - total_custom
+                if not parsed.get('general_query'):
+                    blend["Diesel_pct"] = float(parsed.get('Diesel_pct', 100.0))
+                    blend["Coconut_pct"] = float(parsed.get('Coconut_pct', 0.0))
+                    blend["Castor_pct"] = float(parsed.get('Castor_pct', 0.0))
+                    blend["IPA_pct"] = float(parsed.get('IPA_pct', 0.0))
                     
-                found_custom = True
+                    # Auto balance just in case
+                    total_custom = blend["Coconut_pct"] + blend["Castor_pct"] + blend["IPA_pct"]
+                    if blend["Diesel_pct"] == 100.0 and total_custom > 0 and total_custom <= 100:
+                        blend["Diesel_pct"] = 100.0 - total_custom
+                        
+                    found_custom = True
         except Exception as e:
             print("Gemini Parsing Error:", e)
             # fallback to regex if LLM fails to return valid JSON
@@ -234,7 +261,7 @@ def chatbot_interaction(query: ChatQuery):
             results = predict_performance(b_input)
             
             # Ask Gemini to generate the response based on the ML results!
-            if gemini_client:
+            if gemini_enabled:
                 insight_prompt = f"""
                 You are a Biofuel Optimization AI. 
                 The user asked: "{text}"
@@ -245,11 +272,14 @@ def chatbot_interaction(query: ChatQuery):
                 Flash Point: {results['calculated_properties']['Flash_Point_C']} C
                 Provide a short, concise, and helpful engineering response summarizing these results and any potential issues (e.g., high viscosity). Keep it to 2-3 sentences. Do not use markdown.
                 """
-                insight_response = gemini_client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=insight_prompt,
-                )
-                response_msg = insight_response.text.strip()
+                response_msg = call_gemini(insight_prompt)
+                if not response_msg:
+                    response_msg = (
+                        f"Based on your query, I analyzed a blend of {blend['Diesel_pct']}% Diesel, "
+                        f"{blend['Coconut_pct']}% Coconut, {blend['Castor_pct']}% Castor, and {blend['IPA_pct']}% IPA. "
+                        f"This yields an estimated IC Engine Thermal Efficiency (BTE) of {results['ic_engine_predictions']['BTE_pct']}% "
+                        f"and Jet Engine Thrust of {results['jet_engine_predictions']['Thrust_kN']} kN."
+                    )
             else:
                 response_msg = (
                     f"Based on your query, I analyzed a blend of {blend['Diesel_pct']}% Diesel, "
@@ -266,14 +296,12 @@ def chatbot_interaction(query: ChatQuery):
             
     else:
         # General knowledge querying using Gemini
-        if gemini_client:
+        if gemini_enabled:
             try:
                 gen_prompt = f"You are a Biofuel Optimization AI. Answer this concisely: {text}"
-                response = gemini_client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=gen_prompt,
-                )
-                return {"response": response.text.strip()}
+                response_text = call_gemini(gen_prompt)
+                if response_text:
+                    return {"response": response_text.strip()}
             except:
                 pass
                 
