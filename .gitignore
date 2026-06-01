@@ -1,2 +1,15 @@
+# Environment
 .env
-venv
+.env*
+.env.local
+venv/
+__pycache__/
+
+# Vercel
+.vercel/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store

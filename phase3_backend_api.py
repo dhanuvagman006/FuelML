@@ -38,14 +38,20 @@ app.add_middleware(
 )
 
 # 1. Load trained models and feature scaler on startup
+MODELS_LOADED = False
+scaler = None
+model_ic = None
+model_jet = None
+
 try:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     scaler = joblib.load(os.path.join(base_dir, 'feature_scaler.joblib'))
     model_ic = joblib.load(os.path.join(base_dir, 'model_ic_engine.joblib'))
     model_jet = joblib.load(os.path.join(base_dir, 'model_jet_engine.joblib'))
+    MODELS_LOADED = True
     print("Machine Learning models and scaler loaded successfully.")
-except FileNotFoundError:
-    print("Warning: Models or scaler not found. Please run phase2_ml_modeling.py first.")
+except Exception as e:
+    print(f"Warning: Models or scaler not found: {e}. Please run phase2_ml_modeling.py first.")
 
 # Standard properties for physical property calculation
 PROPERTIES = {
@@ -116,6 +122,9 @@ def predict_performance(blend: BlendInput):
     Accepts blend percentages, calculates resulting physical properties, 
     and predicts IC and Jet Engine performance metrics.
     """
+    if not MODELS_LOADED:
+        raise HTTPException(status_code=503, detail="ML models are not loaded. Please ensure model files exist.")
+    
     try:
         feature_list = calculate_features(blend)
     except ValueError as e:
