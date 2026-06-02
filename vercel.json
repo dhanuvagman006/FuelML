@@ -5,7 +5,7 @@
   "functions": {
     "api/index.py": {
       "runtime": "@vercel/python",
-      "includeFiles": "phase3_backend_api.py,requirements.txt,feature_scaler.joblib,model_ic_engine.joblib,model_jet_engine.joblib,biofuel_synthetic_data.csv,.env"
+      "includeFiles": "phase3_backend_api.py,requirements.txt,models_export.json.gz,biofuel_synthetic_data.csv,.env"
     }
   },
   "rewrites": [

@@ -2,9 +2,9 @@ import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import joblib
 import re
 import os
+import gzip
 
 import json
 from dotenv import load_dotenv
@@ -67,21 +67,66 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 1. Load trained models and feature scaler on startup
+# ---------- Lightweight numpy-only inference engine ----------
+# Replaces scikit-learn/joblib to stay under Vercel's 250 MB limit.
+
+def _predict_tree(tree: dict, X: np.ndarray) -> np.ndarray:
+    """Predict using a single exported decision tree. X shape: (n_samples, n_features)."""
+    cl = tree["children_left"]
+    cr = tree["children_right"]
+    feat = tree["feature"]
+    thresh = tree["threshold"]
+    val = tree["value"]
+
+    n_samples = X.shape[0]
+    predictions = np.empty(n_samples)
+    for i in range(n_samples):
+        node = 0
+        while cl[node] != -1:  # -1 = leaf
+            if X[i, feat[node]] <= thresh[node]:
+                node = cl[node]
+            else:
+                node = cr[node]
+        predictions[i] = val[node]
+    return predictions
+
+
+def _predict_rf(forest_trees: list, X: np.ndarray) -> np.ndarray:
+    """Predict using an exported RandomForest (list of trees). Returns mean."""
+    preds = np.array([_predict_tree(t, X) for t in forest_trees])
+    return preds.mean(axis=0)
+
+
+def _predict_multi_output(model_data: list, X: np.ndarray) -> np.ndarray:
+    """Predict for MultiOutput model (list of RandomForest exports)."""
+    results = []
+    for rf_trees in model_data:
+        results.append(_predict_rf(rf_trees, X))
+    return np.column_stack(results)
+
+
+# 1. Load exported models from compressed JSON
 MODELS_LOADED = False
-scaler = None
-model_ic = None
-model_jet = None
+scaler_mean = None
+scaler_scale = None
+ic_model_data = None
+jet_model_data = None
 
 try:
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    scaler = joblib.load(os.path.join(base_dir, 'feature_scaler.joblib'))
-    model_ic = joblib.load(os.path.join(base_dir, 'model_ic_engine.joblib'))
-    model_jet = joblib.load(os.path.join(base_dir, 'model_jet_engine.joblib'))
+    model_path = os.path.join(base_dir, 'models_export.json.gz')
+    with gzip.open(model_path, 'rt') as f:
+        _data = json.load(f)
+
+    scaler_mean = np.array(_data["scaler"]["mean"])
+    scaler_scale = np.array(_data["scaler"]["scale"])
+    ic_model_data = _data["ic_model"]
+    jet_model_data = _data["jet_model"]
+    del _data  # free memory
     MODELS_LOADED = True
-    print("Machine Learning models and scaler loaded successfully.")
+    print("ML models loaded successfully (numpy-only inference).")
 except Exception as e:
-    print(f"Warning: Models or scaler not found: {e}. Please run phase2_ml_modeling.py first.")
+    print(f"Warning: Models not found: {e}. Please run phase2_ml_modeling.py and export models first.")
 
 # Standard properties for physical property calculation
 PROPERTIES = {
@@ -160,34 +205,32 @@ def predict_performance(blend: BlendInput):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
         
-    # Scale features
-    try:
-        features_scaled = scaler.transform([feature_list])
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Error scaling features. Ensure models are loaded.")
+    # Scale features using exported scaler parameters
+    features_arr = np.array([feature_list])
+    features_scaled = (features_arr - scaler_mean) / scaler_scale
     
-    # Predict using models
-    ic_preds = model_ic.predict(features_scaled)[0]
-    jet_preds = model_jet.predict(features_scaled)[0]
+    # Predict using numpy-only inference
+    ic_preds = _predict_multi_output(ic_model_data, features_scaled)[0]
+    jet_preds = _predict_multi_output(jet_model_data, features_scaled)[0]
     
     return {
         "input_blend": blend.model_dump(),
         "calculated_properties": {
-            "Viscosity_cSt": round(feature_list[4], 2),
-            "Density_kgm3": round(feature_list[5], 2),
-            "Flash_Point_C": round(feature_list[6], 2),
-            "Calorific_Value_MJkg": round(feature_list[7], 2)
+            "Viscosity_cSt": round(float(feature_list[4]), 2),
+            "Density_kgm3": round(float(feature_list[5]), 2),
+            "Flash_Point_C": round(float(feature_list[6]), 2),
+            "Calorific_Value_MJkg": round(float(feature_list[7]), 2)
         },
         "ic_engine_predictions": {
-            "BTE_pct": round(ic_preds[0], 2),
-            "BSFC_gkWh": round(ic_preds[1], 2),
-            "NOx_ppm": round(ic_preds[2], 2),
-            "Smoke_Opacity_pct": round(ic_preds[3], 2)
+            "BTE_pct": round(float(ic_preds[0]), 2),
+            "BSFC_gkWh": round(float(ic_preds[1]), 2),
+            "NOx_ppm": round(float(ic_preds[2]), 2),
+            "Smoke_Opacity_pct": round(float(ic_preds[3]), 2)
         },
         "jet_engine_predictions": {
-            "Thrust_kN": round(jet_preds[0], 2),
-            "SFC_gkNs": round(jet_preds[1], 2),
-            "EGT_C": round(jet_preds[2], 2)
+            "Thrust_kN": round(float(jet_preds[0]), 2),
+            "SFC_gkNs": round(float(jet_preds[1]), 2),
+            "EGT_C": round(float(jet_preds[2]), 2)
         }
     }
 
