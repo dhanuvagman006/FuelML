@@ -11,10 +11,8 @@ from dotenv import load_dotenv
 import urllib.request
 import urllib.error
 
-# Load environment variables
 load_dotenv()
 
-# Configure Gemini via REST API (lightweight, no grpc/protobuf deps)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -25,7 +23,6 @@ if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
 else:
     gemini_enabled = False
     print("No valid Gemini API key found. Using fallback regex logic for chatbot.")
-
 
 def call_gemini(prompt: str) -> str:
     """Call Gemini API using lightweight urllib (no google-genai dependency)."""
@@ -51,14 +48,12 @@ def call_gemini(prompt: str) -> str:
         print(f"Gemini API Error: {e}")
         return None
 
-
 app = FastAPI(
     title="Biofuel Optimization API",
     description="API to predict IC and Jet engine performance based on biofuel blend ratios.",
     version="1.0.0"
 )
 
-# Enable CORS for React Frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,9 +61,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ---------- Lightweight numpy-only inference engine ----------
-# Replaces scikit-learn/joblib to stay under Vercel's 250 MB limit.
 
 def _predict_tree(tree: dict, X: np.ndarray) -> np.ndarray:
     """Predict using a single exported decision tree. X shape: (n_samples, n_features)."""
@@ -82,7 +74,7 @@ def _predict_tree(tree: dict, X: np.ndarray) -> np.ndarray:
     predictions = np.empty(n_samples)
     for i in range(n_samples):
         node = 0
-        while cl[node] != -1:  # -1 = leaf
+        while cl[node] != -1:
             if X[i, feat[node]] <= thresh[node]:
                 node = cl[node]
             else:
@@ -90,12 +82,10 @@ def _predict_tree(tree: dict, X: np.ndarray) -> np.ndarray:
         predictions[i] = val[node]
     return predictions
 
-
 def _predict_rf(forest_trees: list, X: np.ndarray) -> np.ndarray:
     """Predict using an exported RandomForest (list of trees). Returns mean."""
     preds = np.array([_predict_tree(t, X) for t in forest_trees])
     return preds.mean(axis=0)
-
 
 def _predict_multi_output(model_data: list, X: np.ndarray) -> np.ndarray:
     """Predict for MultiOutput model (list of RandomForest exports)."""
@@ -104,8 +94,6 @@ def _predict_multi_output(model_data: list, X: np.ndarray) -> np.ndarray:
         results.append(_predict_rf(rf_trees, X))
     return np.column_stack(results)
 
-
-# 1. Load exported models from compressed JSON
 MODELS_LOADED = False
 scaler_mean = None
 scaler_scale = None
@@ -122,13 +110,12 @@ try:
     scaler_scale = np.array(_data["scaler"]["scale"])
     ic_model_data = _data["ic_model"]
     jet_model_data = _data["jet_model"]
-    del _data  # free memory
+    del _data
     MODELS_LOADED = True
     print("ML models loaded successfully (numpy-only inference).")
 except Exception as e:
     print(f"Warning: Models not found: {e}. Please run phase2_ml_modeling.py and export models first.")
 
-# Standard properties for physical property calculation
 PROPERTIES = {
     'Diesel': {'Viscosity': 2.8, 'Density': 832, 'Flash_Point': 56, 'Calorific_Value': 42.5},
     'Coconut_Oil': {'Viscosity': 27.0, 'Density': 915, 'Flash_Point': 210, 'Calorific_Value': 37.5},
@@ -136,7 +123,6 @@ PROPERTIES = {
     'IPA': {'Viscosity': 2.4, 'Density': 786, 'Flash_Point': 12, 'Calorific_Value': 30.5}
 }
 
-# 2. Define Request Schemas
 class BlendInput(BaseModel):
     Diesel_pct: float
     Coconut_pct: float
@@ -151,27 +137,26 @@ def calculate_features(blend: BlendInput):
     total = blend.Diesel_pct + blend.Coconut_pct + blend.Castor_pct + blend.IPA_pct
     if not (99.0 <= total <= 101.0):
         raise ValueError(f"Blend percentages must sum to 100. Current sum: {total}")
-        
+
     d = blend.Diesel_pct / 100
     co = blend.Coconut_pct / 100
     ca = blend.Castor_pct / 100
     i = blend.IPA_pct / 100
 
-    # Calculate physical properties using mixing rules
     viscosity = np.exp(
         d * np.log(PROPERTIES['Diesel']['Viscosity']) +
         co * np.log(PROPERTIES['Coconut_Oil']['Viscosity']) +
         ca * np.log(PROPERTIES['Castor_Oil']['Viscosity']) +
         i * np.log(PROPERTIES['IPA']['Viscosity'])
     )
-    
+
     density = (
         d * PROPERTIES['Diesel']['Density'] +
         co * PROPERTIES['Coconut_Oil']['Density'] +
         ca * PROPERTIES['Castor_Oil']['Density'] +
         i * PROPERTIES['IPA']['Density']
     )
-    
+
     linear_fp = (
         d * PROPERTIES['Diesel']['Flash_Point'] +
         co * PROPERTIES['Coconut_Oil']['Flash_Point'] +
@@ -179,18 +164,17 @@ def calculate_features(blend: BlendInput):
         i * PROPERTIES['IPA']['Flash_Point']
     )
     flash_point = max(PROPERTIES['IPA']['Flash_Point'], linear_fp - (3.0 * blend.IPA_pct))
-    
+
     calorific_value = (
         d * PROPERTIES['Diesel']['Calorific_Value'] +
         co * PROPERTIES['Coconut_Oil']['Calorific_Value'] +
         ca * PROPERTIES['Castor_Oil']['Calorific_Value'] +
         i * PROPERTIES['IPA']['Calorific_Value']
     )
-    
+
     return [blend.Diesel_pct, blend.Coconut_pct, blend.Castor_pct, blend.IPA_pct, 
             viscosity, density, flash_point, calorific_value]
 
-# 3. Main Prediction Endpoint
 @app.post("/api/predict")
 def predict_performance(blend: BlendInput):
     """
@@ -199,20 +183,18 @@ def predict_performance(blend: BlendInput):
     """
     if not MODELS_LOADED:
         raise HTTPException(status_code=503, detail="ML models are not loaded. Please ensure model files exist.")
-    
+
     try:
         feature_list = calculate_features(blend)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-        
-    # Scale features using exported scaler parameters
+
     features_arr = np.array([feature_list])
     features_scaled = (features_arr - scaler_mean) / scaler_scale
-    
-    # Predict using numpy-only inference
+
     ic_preds = _predict_multi_output(ic_model_data, features_scaled)[0]
     jet_preds = _predict_multi_output(jet_model_data, features_scaled)[0]
-    
+
     return {
         "input_blend": blend.model_dump(),
         "calculated_properties": {
@@ -234,7 +216,6 @@ def predict_performance(blend: BlendInput):
         }
     }
 
-# 4. Chatbot NLP Endpoint
 @app.post("/api/chatbot")
 def chatbot_interaction(query: ChatQuery):
     """
@@ -242,11 +223,10 @@ def chatbot_interaction(query: ChatQuery):
     or falls back to regex to extract percentages.
     """
     text = query.query
-    
-    # Default state
+
     blend = {"Diesel_pct": 100.0, "Coconut_pct": 0.0, "Castor_pct": 0.0, "IPA_pct": 0.0}
     found_custom = False
-    
+
     if gemini_enabled:
         prompt = f"""
         Extract fuel blend percentages from the following user query.
@@ -262,26 +242,25 @@ def chatbot_interaction(query: ChatQuery):
             if res_text:
                 res_text = res_text.replace('```json', '').replace('```', '').strip()
                 parsed = json.loads(res_text)
-                
+
                 if not parsed.get('general_query'):
                     blend["Diesel_pct"] = float(parsed.get('Diesel_pct', 100.0))
                     blend["Coconut_pct"] = float(parsed.get('Coconut_pct', 0.0))
                     blend["Castor_pct"] = float(parsed.get('Castor_pct', 0.0))
                     blend["IPA_pct"] = float(parsed.get('IPA_pct', 0.0))
-                    
-                    # Auto balance just in case
+
                     total_custom = blend["Coconut_pct"] + blend["Castor_pct"] + blend["IPA_pct"]
                     if blend["Diesel_pct"] == 100.0 and total_custom > 0 and total_custom <= 100:
                         blend["Diesel_pct"] = 100.0 - total_custom
-                        
+
                     found_custom = True
         except Exception as e:
             print("Gemini Parsing Error:", e)
-            # fallback to regex if LLM fails to return valid JSON
+
             pass
-            
+
     if not found_custom:
-        # Simple regex parsing fallback
+
         text_lower = text.lower()
         matches = re.findall(r'(\d+(?:\.\d+)?)\s*%\s*(castor|coconut|ipa|diesel)', text_lower)
         if matches:
@@ -292,7 +271,7 @@ def chatbot_interaction(query: ChatQuery):
                 elif f_type == 'coconut': blend["Coconut_pct"] = val_float
                 elif f_type == 'ipa': blend["IPA_pct"] = val_float
                 elif f_type == 'diesel': blend["Diesel_pct"] = val_float
-                
+
                 if f_type != 'diesel':
                     total_custom += val_float
             if blend["Diesel_pct"] == 100.0 and total_custom > 0 and total_custom <= 100:
@@ -303,8 +282,7 @@ def chatbot_interaction(query: ChatQuery):
         try:
             b_input = BlendInput(**blend)
             results = predict_performance(b_input)
-            
-            # Ask Gemini to generate the response based on the ML results!
+
             if gemini_enabled:
                 insight_prompt = f"""
                 You are a Biofuel Optimization AI. 
@@ -333,13 +311,13 @@ def chatbot_interaction(query: ChatQuery):
                 )
                 if blend['Castor_pct'] > 15:
                     response_msg += " ⚠️ Note: High Castor oil content significantly increases viscosity."
-            
+
             return {"response": response_msg, "parsed_blend": blend, "predictions": results}
         except Exception as e:
             return {"response": f"I understood the blend but encountered an error processing it: {str(e)}"}
-            
+
     else:
-        # General knowledge querying using Gemini
+
         if gemini_enabled:
             try:
                 gen_prompt = f"You are a Biofuel Optimization AI. Answer this concisely: {text}"
@@ -348,7 +326,7 @@ def chatbot_interaction(query: ChatQuery):
                     return {"response": response_text.strip()}
             except:
                 pass
-                
+
         return {"response": "Hello! I am the Biofuel AI Assistant. You can ask me specific scenarios like 'What happens if I use 20% Castor oil and 5% IPA?'"}
 
 if __name__ == "__main__":

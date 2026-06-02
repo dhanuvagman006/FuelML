@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import './App.css';
 
-/* ── Constants ─────────────────────────────────────────────── */
 const BASE_DIESEL = {
   BTE: 30.13, BSFC: 245.19, NOx: 947.01,
   Smoke: 44.63, Thrust: 11.99, SFC: 14.99, EGT: 620.42
@@ -24,7 +23,6 @@ const FUEL_CONFIG = {
   IPA_pct: { label: 'IPA', color: '#ea580c', bg: '#fff7ed', gradFrom: '#ea580c', gradTo: '#fb923c' },
 };
 
-/* ── Trend Icon ────────────────────────────────────────────── */
 const TrendIcon = ({ val, base, positiveIsGood = true }) => {
   const delta = val - base;
   const pct = ((delta / base) * 100).toFixed(1);
@@ -38,7 +36,6 @@ const TrendIcon = ({ val, base, positiveIsGood = true }) => {
   );
 };
 
-/* ── Custom Tooltip ────────────────────────────────────────── */
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -66,7 +63,6 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-/* ── Main App ───────────────────────────────────────────────── */
 export default function App() {
   const [blend, setBlend] = useState({
     Diesel_pct: 100, Coconut_pct: 0, Castor_pct: 0, IPA_pct: 0
@@ -165,10 +161,10 @@ export default function App() {
   return (
     <div className="dashboard-container">
 
-      {/* ══════════════ SIDEBAR ══════════════ */}
+      
       <aside className="sidebar">
         <div className="sidebar-top">
-          {/* Brand */}
+          
           <div className="sidebar-brand">
             <div className="brand-icon-wrap">
               <FlaskConical size={20} strokeWidth={2.5} />
@@ -183,7 +179,7 @@ export default function App() {
         </div>
 
         <div className="sidebar-scroll">
-          {/* Fuel Sliders */}
+          
           <div className="fuel-sliders">
             {Object.entries(FUEL_CONFIG).map(([key, cfg]) => (
               <div className="input-group" key={key}>
@@ -215,7 +211,7 @@ export default function App() {
             ))}
           </div>
 
-          {/* Composition Bar */}
+          
           <div className="composition-section">
             <div className="comp-bar-label">Composition</div>
             <div className="composition-bar">
@@ -244,7 +240,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Blend validity */}
+          
           <div className={`blend-status ${isValid ? 'valid' : 'invalid'}`}>
             <div className="blend-status-left">
               {isValid
@@ -260,7 +256,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Footer buttons */}
+        
         <div className="sidebar-footer">
           <button
             className="run-btn"
@@ -283,9 +279,9 @@ export default function App() {
         </div>
       </aside>
 
-      {/* ══════════════ MAIN CONTENT ══════════════ */}
+      
       <main className="main-content">
-        {/* Top bar */}
+        
         <div className="topbar">
           <div className="topbar-left">
             <h1>Engine Performance Analysis</h1>
@@ -301,7 +297,7 @@ export default function App() {
 
         {predictions ? (
           <>
-            {/* Metric Cards */}
+            
             <div className="metrics-grid">
               <div className="metric-card card-cyan">
                 <div className="metric-icon" style={{ background: '#eff6ff' }}>
@@ -356,7 +352,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Charts */}
+            
             <div className="charts-container">
               <div className="chart-card">
                 <div className="chart-top">
@@ -426,7 +422,7 @@ export default function App() {
         )}
       </main>
 
-      {/* ══════════════ CHATBOT ══════════════ */}
+      
       {chatOpen && (
         <div className="chat-container">
           <div className="chat-header">
@@ -479,7 +475,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Chat Toggle FAB */}
+      
       {!chatOpen && (
         <button
           className="chat-fab"

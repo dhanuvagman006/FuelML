@@ -1,8 +1,5 @@
-/* ================================================================
-   FUELML — Premium Professional White Theme
-   ================================================================ */
 
-/* ── Layout ─────────────────────────────────────────────────── */
+
 .dashboard-container {
   display: flex;
   height: 100vh;
@@ -11,7 +8,6 @@
   background: var(--bg-base);
 }
 
-/* ── Sidebar ─────────────────────────────────────────────────── */
 .sidebar {
   width: 300px;
   min-width: 300px;
@@ -38,7 +34,6 @@
   background: var(--bg-sidebar);
 }
 
-/* Brand */
 .sidebar-brand {
   display: flex;
   align-items: center;
@@ -89,7 +84,6 @@
   margin-top: 22px;
 }
 
-/* ── Fuel Sliders ─────────────────────────────────────────────── */
 .fuel-sliders {
   display: flex;
   flex-direction: column;
@@ -201,7 +195,6 @@
   box-shadow: 0 0 0 5px rgba(37,99,235,0.12), 0 1px 5px rgba(13,27,46,0.18);
 }
 
-/* ── Composition Bar ─────────────────────────────────────────── */
 .composition-section { margin-top: 20px; }
 
 .comp-bar-label {
@@ -250,7 +243,6 @@
   flex-shrink: 0;
 }
 
-/* ── Blend Status ─────────────────────────────────────────────── */
 .blend-status {
   display: flex;
   align-items: center;
@@ -295,7 +287,6 @@
   margin-top: 7px;
 }
 
-/* ── Buttons ─────────────────────────────────────────────────── */
 .run-btn {
   width: 100%;
   padding: 14px;
@@ -377,7 +368,6 @@
   animation: spin 0.6s linear infinite;
 }
 
-/* ── Topbar / Header ─────────────────────────────────────────── */
 .topbar {
   display: flex;
   align-items: center;
@@ -433,7 +423,6 @@
   animation: pulse-dot 2s ease-in-out infinite;
 }
 
-/* ── Main Content ─────────────────────────────────────────────── */
 .main-content {
   flex: 1;
   display: flex;
@@ -444,7 +433,6 @@
   background: var(--bg-base);
 }
 
-/* ── Metric Cards ─────────────────────────────────────────────── */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -529,7 +517,6 @@
   font-weight: 500;
 }
 
-/* ── Charts ───────────────────────────────────────────────────── */
 .charts-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -594,7 +581,6 @@
   color: var(--danger);
 }
 
-/* ── Empty State ─────────────────────────────────────────────── */
 .empty-state {
   flex: 1;
   display: flex;
@@ -672,7 +658,6 @@
   flex-shrink: 0;
 }
 
-/* ── Chatbot Panel ───────────────────────────────────────────── */
 .chat-container {
   position: fixed;
   bottom: 24px;
@@ -695,7 +680,6 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Chat Toggle FAB */
 .chat-fab {
   position: fixed;
   bottom: 28px;
@@ -731,7 +715,6 @@
   transform: scale(0.95);
 }
 
-/* Chat Close Button */
 .chat-close-btn {
   width: 30px;
   height: 30px;
@@ -914,7 +897,6 @@
 .chat-send:hover  { transform: scale(1.08); box-shadow: 0 4px 14px rgba(37,99,235,0.45); }
 .chat-send:active { transform: scale(0.93); }
 
-/* ── Recharts tooltip override ───────────────────────────────── */
 .recharts-tooltip-wrapper .recharts-default-tooltip {
   background: #fff !important;
   border: 1px solid var(--border-light) !important;
