@@ -131,10 +131,10 @@ except Exception as e:
 
 # Standard properties for physical property calculation
 PROPERTIES = {
-    'Diesel': {'Viscosity': 3.0, 'Density': 830, 'Flash_Point': 60, 'Calorific_Value': 43.0},
-    'Coconut_Oil': {'Viscosity': 30.0, 'Density': 920, 'Flash_Point': 225, 'Calorific_Value': 37.0},
-    'Castor_Oil': {'Viscosity': 250.0, 'Density': 960, 'Flash_Point': 260, 'Calorific_Value': 39.0},
-    'IPA': {'Viscosity': 2.0, 'Density': 786, 'Flash_Point': 12, 'Calorific_Value': 30.0}
+    'Diesel': {'Viscosity': 2.8, 'Density': 832, 'Flash_Point': 56, 'Calorific_Value': 42.5},
+    'Coconut_Oil': {'Viscosity': 27.0, 'Density': 915, 'Flash_Point': 210, 'Calorific_Value': 37.5},
+    'Castor_Oil': {'Viscosity': 226.0, 'Density': 955, 'Flash_Point': 250, 'Calorific_Value': 37.0},
+    'IPA': {'Viscosity': 2.4, 'Density': 786, 'Flash_Point': 12, 'Calorific_Value': 30.5}
 }
 
 # Request Schemas
@@ -178,7 +178,7 @@ def calculate_features(blend: BlendInput):
         ca * PROPERTIES['Castor_Oil']['Flash_Point'] +
         i * PROPERTIES['IPA']['Flash_Point']
     )
-    flash_point = max(PROPERTIES['IPA']['Flash_Point'], linear_fp - (2.5 * blend.IPA_pct))
+    flash_point = max(PROPERTIES['IPA']['Flash_Point'], linear_fp - (3.0 * blend.IPA_pct))
     
     calorific_value = (
         d * PROPERTIES['Diesel']['Calorific_Value'] +

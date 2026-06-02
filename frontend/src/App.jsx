@@ -265,11 +265,11 @@ export default function App() {
             className="run-btn"
             onClick={handlePredict}
             disabled={!isValid || loading}
-            id="run-simulation-btn"
+            id="run-btn-main"
           >
             {loading
               ? <><div className="spinner" /> Analyzing...</>
-              : <><Zap size={15} strokeWidth={2.5} /> Run Simulation</>
+              : <><Zap size={15} strokeWidth={2.5} /> Run</>
             }
           </button>
           <button
@@ -419,7 +419,7 @@ export default function App() {
             <div className="empty-steps">
               <div className="empty-step"><span className="step-num">1</span> Adjust fuel sliders</div>
               <div className="empty-step"><span className="step-num">2</span> Total must = 100%</div>
-              <div className="empty-step"><span className="step-num">3</span> Run Simulation</div>
+              <div className="empty-step"><span className="step-num">3</span> Click Run</div>
             </div>
           </div>
         )}
