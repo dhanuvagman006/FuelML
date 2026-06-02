@@ -4,7 +4,6 @@
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.py": {
-      "runtime": "@vercel/python",
       "includeFiles": "phase3_backend_api.py,requirements.txt,models_export.json.gz,biofuel_synthetic_data.csv,.env"
     }
   },
