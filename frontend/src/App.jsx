@@ -7,7 +7,7 @@ import {
   FlaskConical, Gauge, Droplets, Thermometer, Flame,
   MessageCircle, Send, Zap, Activity, RotateCcw,
   Cpu, CheckCircle2, AlertCircle, Beaker, Wind,
-  TrendingUp, TrendingDown, Minus
+  TrendingUp, TrendingDown, Minus, X
 } from 'lucide-react';
 import './App.css';
 
@@ -78,6 +78,7 @@ export default function App() {
     sender: 'bot'
   }]);
   const [chatInput, setChatInput] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
   const messagesEndRef = useRef(null);
 
   const total = Object.values(blend).reduce((a, b) => a + b, 0);
@@ -426,47 +427,69 @@ export default function App() {
       </main>
 
       {/* ══════════════ CHATBOT ══════════════ */}
-      <div className="chat-container">
-        <div className="chat-header">
-          <div className="chat-avatar">
-            <MessageCircle size={15} strokeWidth={2.5} />
-          </div>
-          <div className="chat-header-info">
-            <div className="chat-title">AI Fuel Expert</div>
-            <div className="chat-online">
-              <span className="chat-online-dot" /> Online · Gemini Powered
+      {chatOpen && (
+        <div className="chat-container">
+          <div className="chat-header">
+            <div className="chat-avatar">
+              <MessageCircle size={15} strokeWidth={2.5} />
             </div>
-          </div>
-        </div>
-
-        <div className="chat-messages">
-          {chatMessages.map((msg, i) => (
-            <div key={i} className={`msg-row ${msg.sender === 'user' ? 'user-row' : ''}`}>
-              <div className={`msg-av ${msg.sender === 'bot' ? 'bot-av' : 'user-av'}`}>
-                {msg.sender === 'bot' ? 'AI' : 'U'}
+            <div className="chat-header-info">
+              <div className="chat-title">AI Fuel Expert</div>
+              <div className="chat-online">
+                <span className="chat-online-dot" /> Online · Gemini Powered
               </div>
-              <div className={`message ${msg.sender}`}>{msg.text}</div>
             </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="chat-input-area">
-          <form className="chat-form" onSubmit={handleChat}>
-            <input
-              type="text"
-              className="chat-input"
-              placeholder="Ask about a fuel blend..."
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              id="chat-input"
-            />
-            <button type="submit" className="chat-send" id="chat-send-btn">
-              <Send size={14} strokeWidth={2.5} />
+            <button
+              className="chat-close-btn"
+              onClick={() => setChatOpen(false)}
+              id="chat-close-btn"
+              aria-label="Close chat"
+            >
+              <X size={16} strokeWidth={2.5} />
             </button>
-          </form>
+          </div>
+
+          <div className="chat-messages">
+            {chatMessages.map((msg, i) => (
+              <div key={i} className={`msg-row ${msg.sender === 'user' ? 'user-row' : ''}`}>
+                <div className={`msg-av ${msg.sender === 'bot' ? 'bot-av' : 'user-av'}`}>
+                  {msg.sender === 'bot' ? 'AI' : 'U'}
+                </div>
+                <div className={`message ${msg.sender}`}>{msg.text}</div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <div className="chat-input-area">
+            <form className="chat-form" onSubmit={handleChat}>
+              <input
+                type="text"
+                className="chat-input"
+                placeholder="Ask about a fuel blend..."
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                id="chat-input"
+              />
+              <button type="submit" className="chat-send" id="chat-send-btn">
+                <Send size={14} strokeWidth={2.5} />
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Chat Toggle FAB */}
+      {!chatOpen && (
+        <button
+          className="chat-fab"
+          onClick={() => setChatOpen(true)}
+          id="chat-toggle-btn"
+          aria-label="Open AI Fuel Expert"
+        >
+          <MessageCircle size={22} strokeWidth={2.5} />
+        </button>
+      )}
 
     </div>
   );
