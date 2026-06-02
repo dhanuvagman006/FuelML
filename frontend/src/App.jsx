@@ -13,8 +13,8 @@ import './App.css';
 
 /* ── Constants ─────────────────────────────────────────────── */
 const BASE_DIESEL = {
-  BTE: 30.0, BSFC: 250.0, NOx: 500.0,
-  Smoke: 40.0, Thrust: 10.0, SFC: 15.0, EGT: 600.0
+  BTE: 30.13, BSFC: 245.19, NOx: 947.01,
+  Smoke: 44.63, Thrust: 11.99, SFC: 14.99, EGT: 620.42
 };
 
 const FUEL_CONFIG = {
